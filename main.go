@@ -18,11 +18,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/beego/bee/cmd"
-	"github.com/beego/bee/cmd/commands"
-	"github.com/beego/bee/config"
-	"github.com/beego/bee/generate/swaggergen"
-	"github.com/beego/bee/utils"
+	"github.com/cisordeng/bee/cmd"
+	"github.com/cisordeng/bee/cmd/commands"
+	"github.com/cisordeng/bee/config"
+	"github.com/cisordeng/bee/generate/swaggergen"
+	"github.com/cisordeng/bee/utils"
 )
 
 var (

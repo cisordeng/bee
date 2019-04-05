@@ -20,11 +20,11 @@ import (
 	path "path/filepath"
 	"strings"
 
-	"github.com/beego/bee/cmd/commands"
-	"github.com/beego/bee/cmd/commands/version"
-	"github.com/beego/bee/generate"
-	beeLogger "github.com/beego/bee/logger"
-	"github.com/beego/bee/utils"
+	"github.com/cisordeng/bee/cmd/commands"
+	"github.com/cisordeng/bee/cmd/commands/version"
+	"github.com/cisordeng/bee/generate"
+	"github.com/cisordeng/bee/logger"
+	"github.com/cisordeng/bee/utils"
 )
 
 var CmdApiapp = &commands.Command{
@@ -45,493 +45,234 @@ var CmdApiapp = &commands.Command{
 	    ├── main.go
 	    ├── {{"conf"|foldername}}
 	    │     └── app.conf
-	    ├── {{"controllers"|foldername}}
-	    │     └── object.go
-	    │     └── user.go
-	    ├── {{"routers"|foldername}}
-	    │     └── router.go
-	    ├── {{"tests"|foldername}}
-	    │     └── default_test.go
-	    └── {{"models"|foldername}}
-	          └── object.go
-	          └── user.go
+	    ├── {{"rest"|foldername}}
+	    │     └── init.go
+	    │     └── account
+	    │           └── user.go
+	    ├── {{"model"|foldername}}
+	    │     └── init.go
+	    │     └── account
+	    │           └── user.go
+	    └── {{"business"|foldername}}
+	          └── init.go
+	          └── account
+	                └── user.go
 `,
 	PreRun: func(cmd *commands.Command, args []string) { version.ShowShortVersionBanner() },
 	Run:    createAPI,
 }
-var apiconf = `appname = {{.Appname}}
+var apiConf = `appname = {{.Appname}}
 httpport = 8080
 runmode = dev
 autorender = false
 copyrequestbody = true
 EnableDocs = true
-sqlconn = {{.SQLConnStr}}
+
+[db]
+DB_HOST = localhost
+DB_PORT = 3306
+DB_NAME = {{.Appname}}
+DB_USER = {{.Appname}}
+DB_PASSWORD = s:66668888
+DB_CHARSET = utf8
 `
-var apiMaingo = `package main
+var apiMain = `package main
 
 import (
-	_ "{{.Appname}}/routers"
+	"github.com/cisordeng/beego/xenon"
 
-	"github.com/astaxie/beego"
+	_ "{{.Appname}}/model"
+	_ "{{.Appname}}/rest"
 )
 
 func main() {
-	if beego.BConfig.RunMode == "dev" {
-		beego.BConfig.WebConfig.DirectoryIndex = true
-		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
-	}
-	beego.Run()
+	xenon.Run()
 }
 `
 
-var apiMainconngo = `package main
+var apiRest = `package account
 
 import (
-	_ "{{.Appname}}/routers"
+	"github.com/cisordeng/beego/xenon"
 
-	"github.com/astaxie/beego"
-	"github.com/astaxie/beego/orm"
-	{{.DriverPkg}}
+	bUser "gravity/business/user"
 )
-
-func main() {
-	orm.RegisterDataBase("default", "{{.DriverName}}", beego.AppConfig.String("sqlconn"))
-	if beego.BConfig.RunMode == "dev" {
-		beego.BConfig.WebConfig.DirectoryIndex = true
-		beego.BConfig.WebConfig.StaticDir["/swagger"] = "swagger"
-	}
-	beego.Run()
-}
-
-`
-
-var apirouter = `// @APIVersion 1.0.0
-// @Title beego Test API
-// @Description beego has a very cool tools to autogenerate documents for your API
-// @Contact astaxie@gmail.com
-// @TermsOfServiceUrl http://beego.me/
-// @License Apache 2.0
-// @LicenseUrl http://www.apache.org/licenses/LICENSE-2.0.html
-package routers
-
-import (
-	"{{.Appname}}/controllers"
-
-	"github.com/astaxie/beego"
-)
-
-func init() {
-	ns := beego.NewNamespace("/v1",
-		beego.NSNamespace("/object",
-			beego.NSInclude(
-				&controllers.ObjectController{},
-			),
-		),
-		beego.NSNamespace("/user",
-			beego.NSInclude(
-				&controllers.UserController{},
-			),
-		),
-	)
-	beego.AddNamespace(ns)
-}
-`
-
-var APIModels = `package models
-
-import (
-	"errors"
-	"strconv"
-	"time"
-)
-
-var (
-	Objects map[string]*Object
-)
-
-type Object struct {
-	ObjectId   string
-	Score      int64
-	PlayerName string
-}
-
-func init() {
-	Objects = make(map[string]*Object)
-	Objects["hjkhsbnmn123"] = &Object{"hjkhsbnmn123", 100, "astaxie"}
-	Objects["mjjkxsxsaa23"] = &Object{"mjjkxsxsaa23", 101, "someone"}
-}
-
-func AddOne(object Object) (ObjectId string) {
-	object.ObjectId = "astaxie" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	Objects[object.ObjectId] = &object
-	return object.ObjectId
-}
-
-func GetOne(ObjectId string) (object *Object, err error) {
-	if v, ok := Objects[ObjectId]; ok {
-		return v, nil
-	}
-	return nil, errors.New("ObjectId Not Exist")
-}
-
-func GetAll() map[string]*Object {
-	return Objects
-}
-
-func Update(ObjectId string, Score int64) (err error) {
-	if v, ok := Objects[ObjectId]; ok {
-		v.Score = Score
-		return nil
-	}
-	return errors.New("ObjectId Not Exist")
-}
-
-func Delete(ObjectId string) {
-	delete(Objects, ObjectId)
-}
-
-`
-
-var APIModels2 = `package models
-
-import (
-	"errors"
-	"strconv"
-	"time"
-)
-
-var (
-	UserList map[string]*User
-)
-
-func init() {
-	UserList = make(map[string]*User)
-	u := User{"user_11111", "astaxie", "11111", Profile{"male", 20, "Singapore", "astaxie@gmail.com"}}
-	UserList["user_11111"] = &u
-}
 
 type User struct {
-	Id       string
-	Username string
-	Password string
-	Profile  Profile
+	xenon.RestResource
 }
 
-type Profile struct {
-	Gender  string
-	Age     int
-	Address string
-	Email   string
+func init () {
+	xenon.RegisterResource(new(User))
 }
 
-func AddUser(u User) string {
-	u.Id = "user_" + strconv.FormatInt(time.Now().UnixNano(), 10)
-	UserList[u.Id] = &u
-	return u.Id
+func (this *User) Resource() string {
+	return "account.user"
 }
 
-func GetUser(uid string) (u *User, err error) {
-	if u, ok := UserList[uid]; ok {
-		return u, nil
+func (this *User) Params() map[string][]string {
+	return map[string][]string{
+		"GET":  []string{
+			"username",
+		},
+		"PUT": []string{
+			"username",
+			"password",
+			"avatar",
+		},
 	}
-	return nil, errors.New("User not exists")
 }
 
-func GetAllUsers() map[string]*User {
-	return UserList
+func (this *User) Get() {
+	Username := this.GetString("username", "")
+
+	bCtx := this.GetBusinessContext()
+
+	article := bUser.GetUserByName(bCtx, Username)
+	data := bUser.EncodeUser(article)
+	this.ReturnJSON(data)
 }
 
-func UpdateUser(uid string, uu *User) (a *User, err error) {
-	if u, ok := UserList[uid]; ok {
-		if uu.Username != "" {
-			u.Username = uu.Username
-		}
-		if uu.Password != "" {
-			u.Password = uu.Password
-		}
-		if uu.Profile.Age != 0 {
-			u.Profile.Age = uu.Profile.Age
-		}
-		if uu.Profile.Address != "" {
-			u.Profile.Address = uu.Profile.Address
-		}
-		if uu.Profile.Gender != "" {
-			u.Profile.Gender = uu.Profile.Gender
-		}
-		if uu.Profile.Email != "" {
-			u.Profile.Email = uu.Profile.Email
-		}
-		return u, nil
-	}
-	return nil, errors.New("User Not Exist")
-}
+func (this *User) Put() {
+	Username := this.GetString("username", "")
+	Password := this.GetString("password", "")
+	Avatar := this.GetString("avatar", "")
 
-func Login(username, password string) bool {
-	for _, u := range UserList {
-		if u.Username == username && u.Password == password {
-			return true
-		}
-	}
-	return false
-}
+	bCtx := this.GetBusinessContext()
 
-func DeleteUser(uid string) {
-	delete(UserList, uid)
+	user := bUser.NewUser(bCtx, Username, Password, Avatar)
+	data := bUser.EncodeUser(user)
+	this.ReturnJSON(data)
 }
 `
 
-var apiControllers = `package controllers
+var apiRestInit = `package rest
 
 import (
-	"{{.Appname}}/models"
-	"encoding/json"
-
-	"github.com/astaxie/beego"
-)
-
-// Operations about object
-type ObjectController struct {
-	beego.Controller
-}
-
-// @Title Create
-// @Description create object
-// @Param	body		body 	models.Object	true		"The object content"
-// @Success 200 {string} models.Object.Id
-// @Failure 403 body is empty
-// @router / [post]
-func (o *ObjectController) Post() {
-	var ob models.Object
-	json.Unmarshal(o.Ctx.Input.RequestBody, &ob)
-	objectid := models.AddOne(ob)
-	o.Data["json"] = map[string]string{"ObjectId": objectid}
-	o.ServeJSON()
-}
-
-// @Title Get
-// @Description find object by objectid
-// @Param	objectId		path 	string	true		"the objectid you want to get"
-// @Success 200 {object} models.Object
-// @Failure 403 :objectId is empty
-// @router /:objectId [get]
-func (o *ObjectController) Get() {
-	objectId := o.Ctx.Input.Param(":objectId")
-	if objectId != "" {
-		ob, err := models.GetOne(objectId)
-		if err != nil {
-			o.Data["json"] = err.Error()
-		} else {
-			o.Data["json"] = ob
-		}
-	}
-	o.ServeJSON()
-}
-
-// @Title GetAll
-// @Description get all objects
-// @Success 200 {object} models.Object
-// @Failure 403 :objectId is empty
-// @router / [get]
-func (o *ObjectController) GetAll() {
-	obs := models.GetAll()
-	o.Data["json"] = obs
-	o.ServeJSON()
-}
-
-// @Title Update
-// @Description update the object
-// @Param	objectId		path 	string	true		"The objectid you want to update"
-// @Param	body		body 	models.Object	true		"The body"
-// @Success 200 {object} models.Object
-// @Failure 403 :objectId is empty
-// @router /:objectId [put]
-func (o *ObjectController) Put() {
-	objectId := o.Ctx.Input.Param(":objectId")
-	var ob models.Object
-	json.Unmarshal(o.Ctx.Input.RequestBody, &ob)
-
-	err := models.Update(objectId, ob.Score)
-	if err != nil {
-		o.Data["json"] = err.Error()
-	} else {
-		o.Data["json"] = "update success!"
-	}
-	o.ServeJSON()
-}
-
-// @Title Delete
-// @Description delete the object
-// @Param	objectId		path 	string	true		"The objectId you want to delete"
-// @Success 200 {string} delete success!
-// @Failure 403 objectId is empty
-// @router /:objectId [delete]
-func (o *ObjectController) Delete() {
-	objectId := o.Ctx.Input.Param(":objectId")
-	models.Delete(objectId)
-	o.Data["json"] = "delete success!"
-	o.ServeJSON()
-}
-
-`
-var apiControllers2 = `package controllers
-
-import (
-	"{{.Appname}}/models"
-	"encoding/json"
-
-	"github.com/astaxie/beego"
-)
-
-// Operations about Users
-type UserController struct {
-	beego.Controller
-}
-
-// @Title CreateUser
-// @Description create users
-// @Param	body		body 	models.User	true		"body for user content"
-// @Success 200 {int} models.User.Id
-// @Failure 403 body is empty
-// @router / [post]
-func (u *UserController) Post() {
-	var user models.User
-	json.Unmarshal(u.Ctx.Input.RequestBody, &user)
-	uid := models.AddUser(user)
-	u.Data["json"] = map[string]string{"uid": uid}
-	u.ServeJSON()
-}
-
-// @Title GetAll
-// @Description get all Users
-// @Success 200 {object} models.User
-// @router / [get]
-func (u *UserController) GetAll() {
-	users := models.GetAllUsers()
-	u.Data["json"] = users
-	u.ServeJSON()
-}
-
-// @Title Get
-// @Description get user by uid
-// @Param	uid		path 	string	true		"The key for staticblock"
-// @Success 200 {object} models.User
-// @Failure 403 :uid is empty
-// @router /:uid [get]
-func (u *UserController) Get() {
-	uid := u.GetString(":uid")
-	if uid != "" {
-		user, err := models.GetUser(uid)
-		if err != nil {
-			u.Data["json"] = err.Error()
-		} else {
-			u.Data["json"] = user
-		}
-	}
-	u.ServeJSON()
-}
-
-// @Title Update
-// @Description update the user
-// @Param	uid		path 	string	true		"The uid you want to update"
-// @Param	body		body 	models.User	true		"body for user content"
-// @Success 200 {object} models.User
-// @Failure 403 :uid is not int
-// @router /:uid [put]
-func (u *UserController) Put() {
-	uid := u.GetString(":uid")
-	if uid != "" {
-		var user models.User
-		json.Unmarshal(u.Ctx.Input.RequestBody, &user)
-		uu, err := models.UpdateUser(uid, &user)
-		if err != nil {
-			u.Data["json"] = err.Error()
-		} else {
-			u.Data["json"] = uu
-		}
-	}
-	u.ServeJSON()
-}
-
-// @Title Delete
-// @Description delete the user
-// @Param	uid		path 	string	true		"The uid you want to delete"
-// @Success 200 {string} delete success!
-// @Failure 403 uid is empty
-// @router /:uid [delete]
-func (u *UserController) Delete() {
-	uid := u.GetString(":uid")
-	models.DeleteUser(uid)
-	u.Data["json"] = "delete success!"
-	u.ServeJSON()
-}
-
-// @Title Login
-// @Description Logs user into the system
-// @Param	username		query 	string	true		"The username for login"
-// @Param	password		query 	string	true		"The password for login"
-// @Success 200 {string} login success
-// @Failure 403 user not exist
-// @router /login [get]
-func (u *UserController) Login() {
-	username := u.GetString("username")
-	password := u.GetString("password")
-	if models.Login(username, password) {
-		u.Data["json"] = "login success"
-	} else {
-		u.Data["json"] = "user not exist"
-	}
-	u.ServeJSON()
-}
-
-// @Title logout
-// @Description Logs out current logged in user session
-// @Success 200 {string} logout success
-// @router /logout [get]
-func (u *UserController) Logout() {
-	u.Data["json"] = "logout success"
-	u.ServeJSON()
-}
-
-`
-
-var apiTests = `package test
-
-import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"runtime"
-	"path/filepath"
-	_ "{{.Appname}}/routers"
-
-	"github.com/astaxie/beego"
-	. "github.com/smartystreets/goconvey/convey"
+	_ "{{.Appname}}/rest/account"
 )
 
 func init() {
-	_, file, _, _ := runtime.Caller(0)
-	apppath, _ := filepath.Abs(filepath.Dir(filepath.Join(file, ".." + string(filepath.Separator))))
-	beego.TestBeegoInit(apppath)
+}
+`
+
+var apiModel = `package account
+
+import (
+	"time"
+
+	"github.com/cisordeng/beego/orm"
+)
+
+type User struct {
+	Id int
+	Username string
+	Password string
+	Avatar string
+	CreatedAt time.Time `+"`orm:\"auto_now_add;type(datetime)\"`"+`
 }
 
-// TestGet is a sample to run an endpoint test
-func TestGet(t *testing.T) {
-	r, _ := http.NewRequest("GET", "/v1/object", nil)
-	w := httptest.NewRecorder()
-	beego.BeeApp.Handlers.ServeHTTP(w, r)
-
-	beego.Trace("testing", "TestGet", "Code[%d]\n%s", w.Code, w.Body.String())
-
-	Convey("Subject: Test Station Endpoint\n", t, func() {
-	        Convey("Status Code Should Be 200", func() {
-	                So(w.Code, ShouldEqual, 200)
-	        })
-	        Convey("The Result Should Not Be Empty", func() {
-	                So(w.Body.Len(), ShouldBeGreaterThan, 0)
-	        })
-	})
+func (o *User) TableName() string {
+	return "account_user"
 }
 
+func init() {
+	orm.RegisterModel(new(User))
+}
+`
+
+var apiModelInit = `package model
+
+import (
+	_ "{{.Appname}}/model/account"
+)
+
+func init() {
+}
+`
+
+var apiBusiness = `package user
+
+import (
+	"time"
+
+	"github.com/cisordeng/beego/orm"
+	"github.com/cisordeng/beego/xenon"
+
+	mUser "gravity/model/account"
+)
+
+type User struct {
+	Id int
+	Username string
+	Avatar string
+	CreatedAt time.Time
+}
+
+func init() {
+}
+
+func InitUserFromModel(model *mUser.User) *User {
+	instance := new(User)
+	instance.Id = model.Id
+	instance.Username = model.Username
+	instance.Avatar = model.Avatar
+	instance.CreatedAt = model.CreatedAt
+
+	return instance
+}
+
+func NewUser(ctx *xenon.Ctx, Username string, Password string, Avatar string) (user *User) {
+	model := mUser.User{
+		Username: Username,
+		Password: xenon.String2MD5(Password),
+		Avatar: Avatar,
+	}
+	_, err := orm.NewOrm().Insert(&model)
+	xenon.RaiseError(ctx, err)
+	return InitUserFromModel(&model)
+}
+`
+
+var apiBusinessRepository = `package user
+
+import (
+	"github.com/cisordeng/beego/orm"
+	"github.com/cisordeng/beego/xenon"
+	
+	mUser "gravity/model/account"
+)
+
+func GetUserByName(ctx *xenon.Ctx, Username string) (user *User)  {
+	model := mUser.User{}
+	err := orm.NewOrm().QueryTable("user_user").Filter("username", Username).One(&model)
+	xenon.RaiseError(ctx, err, xenon.NewBusinessError("raise:account:not_exits", "用户不存在"))
+	user = InitUserFromModel(&model)
+	return user
+}
+`
+
+var apiBusinessEncode = `package user
+
+import (
+	"github.com/cisordeng/beego/xenon"
+)
+
+func EncodeUser(user *User) xenon.Map {
+	mapUser := xenon.Map{
+		"id": user.Id,
+		"username": user.Username,
+		"avatar": user.Avatar,
+		"created_at": user.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
+	return mapUser
+}
+`
+
+var apiBusinessInit = `package business
+
+func init() {
+}
 `
 
 func init() {
@@ -555,7 +296,7 @@ func createAPI(cmd *commands.Command, args []string) int {
 		}
 	}
 
-	appPath, packPath, err := utils.CheckEnv(args[0])
+	appPath, _, err := utils.CheckEnv(args[0])
 	appName := path.Base(args[0])
 	if err != nil {
 		beeLogger.Log.Fatalf("%s", err)
@@ -570,74 +311,58 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", appPath, "\x1b[0m")
 	os.Mkdir(path.Join(appPath, "conf"), 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf"), "\x1b[0m")
-	os.Mkdir(path.Join(appPath, "controllers"), 0755)
-	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers"), "\x1b[0m")
-	os.Mkdir(path.Join(appPath, "tests"), 0755)
-	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "tests"), "\x1b[0m")
+	os.Mkdir(path.Join(appPath, "rest"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "rest"), "\x1b[0m")
+	os.Mkdir(path.Join(appPath, "model"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "model"), "\x1b[0m")
+	os.Mkdir(path.Join(appPath, "business"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business"), "\x1b[0m")
 
-	if generate.SQLConn != "" {
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf", "app.conf"), "\x1b[0m")
-		confContent := strings.Replace(apiconf, "{{.Appname}}", appName, -1)
-		confContent = strings.Replace(confContent, "{{.SQLConnStr}}", generate.SQLConn.String(), -1)
-		utils.WriteToFile(path.Join(appPath, "conf", "app.conf"), confContent)
 
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "main.go"), "\x1b[0m")
-		mainGoContent := strings.Replace(apiMainconngo, "{{.Appname}}", packPath, -1)
-		mainGoContent = strings.Replace(mainGoContent, "{{.DriverName}}", string(generate.SQLDriver), -1)
-		if generate.SQLDriver == "mysql" {
-			mainGoContent = strings.Replace(mainGoContent, "{{.DriverPkg}}", `_ "github.com/go-sql-driver/mysql"`, -1)
-		} else if generate.SQLDriver == "postgres" {
-			mainGoContent = strings.Replace(mainGoContent, "{{.DriverPkg}}", `_ "github.com/lib/pq"`, -1)
-		}
-		utils.WriteToFile(path.Join(appPath, "main.go"),
-			strings.Replace(
-				mainGoContent,
-				"{{.conn}}",
-				generate.SQLConn.String(),
-				-1,
-			),
-		)
-		beeLogger.Log.Infof("Using '%s' as 'driver'", generate.SQLDriver)
-		beeLogger.Log.Infof("Using '%s' as 'conn'", generate.SQLConn)
-		beeLogger.Log.Infof("Using '%s' as 'tables'", generate.Tables)
-		generate.GenerateAppcode(string(generate.SQLDriver), string(generate.SQLConn), "3", string(generate.Tables), appPath)
-	} else {
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf", "app.conf"), "\x1b[0m")
-		confContent := strings.Replace(apiconf, "{{.Appname}}", appName, -1)
-		confContent = strings.Replace(confContent, "{{.SQLConnStr}}", "", -1)
-		utils.WriteToFile(path.Join(appPath, "conf", "app.conf"), confContent)
+	// config
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf", "app.conf"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "conf", "app.conf"),
+		strings.Replace(apiConf, "{{.Appname}}", appName, -1))
 
-		os.Mkdir(path.Join(appPath, "models"), 0755)
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "models"), "\x1b[0m")
-		os.Mkdir(path.Join(appPath, "routers"), 0755)
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "routers")+string(path.Separator), "\x1b[0m")
+	// rest
+	os.Mkdir(path.Join(appPath, "rest", "account"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "rest", "account"), "\x1b[0m")
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "rest", "account", "user.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "rest", "account", "user.go"),
+		strings.Replace(apiRest, "{{.Appname}}", appName, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "rest", "init.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "rest", "init.go"),
+		strings.Replace(apiRestInit, "{{.Appname}}", appName, -1))
 
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "object.go"), "\x1b[0m")
-		utils.WriteToFile(path.Join(appPath, "controllers", "object.go"),
-			strings.Replace(apiControllers, "{{.Appname}}", packPath, -1))
+	// business
+	os.Mkdir(path.Join(appPath, "business", "account"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account"), "\x1b[0m")
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "user.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "business", "account", "user.go"),
+		strings.Replace(apiBusiness, "{{.Appname}}", appName, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "user_repository.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "business", "account", "user_repository.go"),
+		strings.Replace(apiBusinessRepository, "{{.Appname}}", appName, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "encode_user_service.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "business", "account", "encode_user_service.go"),
+		strings.Replace(apiBusinessEncode, "{{.Appname}}", appName, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "init.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "business", "init.go"),
+		strings.Replace(apiBusinessInit, "{{.Appname}}", appName, -1))
 
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "controllers", "user.go"), "\x1b[0m")
-		utils.WriteToFile(path.Join(appPath, "controllers", "user.go"),
-			strings.Replace(apiControllers2, "{{.Appname}}", packPath, -1))
+	// model
+	os.Mkdir(path.Join(appPath, "model", "account"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "model", "account"), "\x1b[0m")
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "model", "account", "user.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "model", "account", "user.go"), apiModel)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "model", "init.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "model", "init.go"),
+		strings.Replace(apiModelInit, "{{.Appname}}", appName, -1))
 
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "tests", "default_test.go"), "\x1b[0m")
-		utils.WriteToFile(path.Join(appPath, "tests", "default_test.go"),
-			strings.Replace(apiTests, "{{.Appname}}", packPath, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "main.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "main.go"),
+		strings.Replace(apiMain, "{{.Appname}}", appName, -1))
 
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "routers", "router.go"), "\x1b[0m")
-		utils.WriteToFile(path.Join(appPath, "routers", "router.go"),
-			strings.Replace(apirouter, "{{.Appname}}", packPath, -1))
-
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "models", "object.go"), "\x1b[0m")
-		utils.WriteToFile(path.Join(appPath, "models", "object.go"), APIModels)
-
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "models", "user.go"), "\x1b[0m")
-		utils.WriteToFile(path.Join(appPath, "models", "user.go"), APIModels2)
-
-		fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "main.go"), "\x1b[0m")
-		utils.WriteToFile(path.Join(appPath, "main.go"),
-			strings.Replace(apiMaingo, "{{.Appname}}", packPath, -1))
-	}
 	beeLogger.Log.Success("New API successfully created!")
 	return 0
 }

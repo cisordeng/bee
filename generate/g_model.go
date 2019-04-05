@@ -21,9 +21,9 @@ import (
 	"path"
 	"strings"
 
-	beeLogger "github.com/beego/bee/logger"
-	"github.com/beego/bee/logger/colors"
-	"github.com/beego/bee/utils"
+	beeLogger "github.com/cisordeng/bee/logger"
+	"github.com/cisordeng/bee/logger/colors"
+	"github.com/cisordeng/bee/utils"
 )
 
 func GenerateModel(mname, fields, currpath string) {

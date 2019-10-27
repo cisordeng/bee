@@ -120,7 +120,7 @@ func GetOne{{.ResourceName}}(filters xenon.Map) *{{.ResourceName}} {
 
 	err := qs.One(&model)
 	xenon.PanicNotNilError(err, "raise:{{.resource_name}}:not_exits", "{{.resource_name}}不存在")
-	return nil
+	return Init{{.ResourceName}}FromModel(&model)
 }
 
 func Get{{.ResourceName}}s(filters xenon.Map, orderExprs ...string ) []*{{.ResourceName}} {

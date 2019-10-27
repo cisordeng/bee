@@ -128,7 +128,7 @@ func GetBeegoVersion() string {
 		return ""
 	}
 	for _, wg := range wgopath {
-		wg, _ = path.EvalSymlinks(path.Join(wg, "src", "github.com", "astaxie", "beego"))
+		wg, _ = path.EvalSymlinks(path.Join(wg, "src", "github.com", "cisordeng", "beego"))
 		filename := path.Join(wg, "beego.go")
 		_, err := os.Stat(filename)
 		if err != nil {
@@ -159,7 +159,7 @@ func GetBeegoVersion() string {
 		}
 
 	}
-	return "Beego is not installed. Please do consider installing it first: https://github.com/astaxie/beego"
+	return "Beego is not installed. Please do consider installing it first: https://github.com/cisordeng/beego"
 }
 
 func GetGoVersion() string {

@@ -78,7 +78,7 @@ func GenerateController(cname, currpath string) {
 var controllerTpl = `package {{packageName}}
 
 import (
-	"github.com/astaxie/beego"
+	"github.com/cisordeng/beego"
 )
 
 // {{controllerName}}Controller operations for {{controllerName}}
@@ -166,7 +166,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/astaxie/beego"
+	"github.com/cisordeng/beego"
 )
 
 //  {{controllerName}}Controller operations for {{controllerName}}

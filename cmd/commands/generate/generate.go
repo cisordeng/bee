@@ -106,6 +106,8 @@ func GenerateCode(cmd *commands.Command, args []string) int {
 		model(cmd, args, currpath)
 	case "view":
 		view(args, currpath)
+	case "resource":
+		resource(args, currpath)
 	default:
 		beeLogger.Log.Fatal("Command is missing")
 	}
@@ -212,6 +214,15 @@ func view(args []string, currpath string) {
 	if len(args) == 2 {
 		cname := args[1]
 		generate.GenerateView(cname, currpath)
+	} else {
+		beeLogger.Log.Fatal("Wrong number of arguments. Run: bee help generate")
+	}
+}
+
+func resource(args []string, currpath string) {
+	if len(args) == 2 {
+		cname := args[1]
+		generate.GenerateResource(cname, currpath)
 	} else {
 		beeLogger.Log.Fatal("Wrong number of arguments. Run: bee help generate")
 	}

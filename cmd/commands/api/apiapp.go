@@ -75,6 +75,10 @@ DB_NAME = {{.Appname}}
 DB_USER = {{.Appname}}
 DB_PASSWORD = s:66668888
 DB_CHARSET = utf8
+
+[api]
+signSecret = 7d736a2822f8c005a8f034b477b23f27
+signEffectiveSeconds = 15
 `
 var apiMain = `package main
 

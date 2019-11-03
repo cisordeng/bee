@@ -49,6 +49,7 @@ var CmdApiapp = &commands.Command{
 	    │     └── init.go
 	    │     └── account
 	    │           └── user.go
+	    │           └── login_user.go
 	    ├── {{"model"|foldername}}
 	    │     └── init.go
 	    │     └── account
@@ -57,6 +58,9 @@ var CmdApiapp = &commands.Command{
 	          └── init.go
 	          └── account
 	                └── user.go
+	                └── user_repository.go
+	                └── encode_user_service.go
+	                └── auth_user_service.go
 `,
 	PreRun: func(cmd *commands.Command, args []string) { version.ShowShortVersionBanner() },
 	Run:    createAPI,
@@ -77,8 +81,10 @@ DB_PASSWORD = s:66668888
 DB_CHARSET = utf8
 
 [api]
+enableSign = true
 signSecret = 7d736a2822f8c005a8f034b477b23f27
 signEffectiveSeconds = 15
+aesCommonKey = 7d736a2822f8c005a8f034b477b23f27
 `
 var apiMain = `package main
 
@@ -116,37 +122,66 @@ func (this *User) Resource() string {
 
 func (this *User) Params() map[string][]string {
 	return map[string][]string{
-		"GET":  []string{
-			"username",
-		},
 		"PUT": []string{
-			"username",
+			"name",
 			"password",
 			"avatar",
 		},
 	}
 }
 
-func (this *User) Get() {
-	Username := this.GetString("username", "")
-
-	bCtx := this.GetBusinessContext()
-
-	article := bUser.GetUserByName(bCtx, Username)
-	data := bUser.EncodeUser(article)
-	this.ReturnJSON(data)
-}
-
 func (this *User) Put() {
-	Username := this.GetString("username", "")
-	Password := this.GetString("password", "")
-	Avatar := this.GetString("avatar", "")
+	name := this.GetString("name", "")
+	password := this.GetString("password", "")
+	avatar := this.GetString("avatar", "")
 
-	bCtx := this.GetBusinessContext()
-
-	user := bUser.NewUser(bCtx, Username, Password, Avatar)
+	user := bUser.NewUser(name, password, avatar)
 	data := bUser.EncodeUser(user)
 	this.ReturnJSON(data)
+}
+`
+
+var apiRestLogin = `package account
+
+import (
+	"github.com/cisordeng/beego/xenon"
+
+	bUser "{{.Appname}}/business/account"
+)
+
+type LoginUser struct {
+	xenon.RestResource
+}
+
+func init () {
+	xenon.RegisterResource(new(LoginUser))
+}
+
+func (this *LoginUser) Resource() string {
+	return "account.login_user"
+}
+
+func (this *LoginUser) Params() map[string][]string {
+	return map[string][]string{
+		"PUT": []string{
+			"name",
+			"password",
+		},
+	}
+}
+
+func (this *LoginUser) Put() {
+	name := this.GetString("name", "")
+	password := this.GetString("password", "")
+	sid := bUser.AuthUser(name, password)
+	if sid != "" {
+		user := bUser.GetUserByName(name)
+		data := bUser.EncodeUser(user)
+		data["sid"] = sid
+		this.ReturnJSON(data)
+	} else {
+		xenon.RaiseException("rest:name or password is wrong", "用户名或密码错误")
+	}
 }
 `
 
@@ -170,7 +205,7 @@ import (
 
 type User struct {
 	Id int
-	Username string
+	Name string
 	Password string
 	Avatar string
 	CreatedAt time.Time `+"`orm:\"auto_now_add;type(datetime)\"`"+`
@@ -195,7 +230,7 @@ func init() {
 }
 `
 
-var apiBusiness = `package user
+var apiBusiness = `package account
 
 import (
 	"time"
@@ -204,11 +239,13 @@ import (
 	"github.com/cisordeng/beego/xenon"
 
 	mUser "{{.Appname}}/model/account"
+
 )
 
 type User struct {
 	Id int
-	Username string
+	Name string
+	Password string
 	Avatar string
 	CreatedAt time.Time
 }
@@ -219,46 +256,47 @@ func init() {
 func InitUserFromModel(model *mUser.User) *User {
 	instance := new(User)
 	instance.Id = model.Id
-	instance.Username = model.Username
+	instance.Name = model.Name
+	instance.Password = model.Password
 	instance.Avatar = model.Avatar
 	instance.CreatedAt = model.CreatedAt
 
 	return instance
 }
 
-func NewUser(ctx *xenon.Ctx, Username string, Password string, Avatar string) (user *User) {
+func NewUser(name string, password string, avatar string) (user *User) {
 	model := mUser.User{
-		Username: Username,
-		Password: xenon.String2MD5(Password),
-		Avatar: Avatar,
+		Name: name,
+		Password: xenon.EncodeMD5(password),
+		Avatar: avatar,
 	}
 	_, err := orm.NewOrm().Insert(&model)
-	xenon.RaiseError(ctx, err)
+	xenon.PanicNotNilError(err)
 	return InitUserFromModel(&model)
 }
 `
 
-var apiBusinessRepository = `package user
+var apiBusinessRepository = `package account
 
 import (
 	"github.com/cisordeng/beego/orm"
 	"github.com/cisordeng/beego/xenon"
-	
+
 	mUser "{{.Appname}}/model/account"
 )
 
-func GetUserByName(ctx *xenon.Ctx, Username string) (user *User)  {
+func GetUserByName(name string) (user *User)  {
 	model := mUser.User{}
 	err := orm.NewOrm().QueryTable(&mUser.User{}).Filter(xenon.Map{
-		"username": Username,
+		"name": name,
 	}).One(&model)
-	xenon.RaiseError(ctx, err, xenon.NewBusinessError("raise:account:not_exits", "用户不存在"))
+	xenon.PanicNotNilError(err, "raise:account:not_exits", "用户不存在")
 	user = InitUserFromModel(&model)
 	return user
 }
 `
 
-var apiBusinessEncode = `package user
+var apiBusinessEncode = `package account
 
 import (
 	"github.com/cisordeng/beego/xenon"
@@ -267,11 +305,37 @@ import (
 func EncodeUser(user *User) xenon.Map {
 	mapUser := xenon.Map{
 		"id": user.Id,
-		"username": user.Username,
+		"name": user.Name,
 		"avatar": user.Avatar,
 		"created_at": user.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 	return mapUser
+}
+`
+
+var apiBusinessAuth = `package account
+
+import (
+	"encoding/json"
+
+	"github.com/cisordeng/beego"
+	"github.com/cisordeng/beego/xenon"
+)
+
+func AuthUser(name string, password string) string {
+	user := GetUserByName(name)
+	userMap := EncodeUser(user)
+	if user.Password == xenon.EncodeMD5(password) {
+		decodedByteToken, err := json.Marshal(userMap)
+		xenon.PanicNotNilError(err)
+		decodedToken := string(decodedByteToken)
+
+		commonKey := beego.AppConfig.String("api::aesCommonKey")
+		sid, err := xenon.EncodeAesWithCommonKey(decodedToken, commonKey)
+		xenon.PanicNotNilError(err)
+		return sid
+	}
+	return ""
 }
 `
 
@@ -336,6 +400,9 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "rest", "account", "user.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "rest", "account", "user.go"),
 		strings.Replace(apiRest, "{{.Appname}}", appName, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "rest", "account", "login_user.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "rest", "account", "login_user.go"),
+		strings.Replace(apiRestLogin, "{{.Appname}}", appName, -1))
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "rest", "init.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "rest", "init.go"),
 		strings.Replace(apiRestInit, "{{.Appname}}", appName, -1))
@@ -352,6 +419,9 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "encode_user_service.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "business", "account", "encode_user_service.go"),
 		strings.Replace(apiBusinessEncode, "{{.Appname}}", appName, -1))
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "auth_user_service.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "business", "account", "auth_user_service.go"),
+		strings.Replace(apiBusinessAuth, "{{.Appname}}", appName, -1))
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "init.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "business", "init.go"),
 		strings.Replace(apiBusinessInit, "{{.Appname}}", appName, -1))

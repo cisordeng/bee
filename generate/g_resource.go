@@ -184,7 +184,7 @@ func Get{{.ResourceName}}s(filters xenon.Map, orderExprs ...string ) []*{{.Resou
 	return {{.resourceName}}s
 }
 
-func GetPaged{{.ResourceName}}(page *xenon.Paginator, filters xenon.Map, orderExprs ...string ) ([]*{{.ResourceName}}, xenon.PageInfo) {
+func GetPaged{{.ResourceName}}s(page *xenon.Paginator, filters xenon.Map, orderExprs ...string ) ([]*{{.ResourceName}}, xenon.PageInfo) {
 	o := orm.NewOrm()
 	qs := o.QueryTable(&m{{.PackageName}}.{{.ResourceName}}{})
 

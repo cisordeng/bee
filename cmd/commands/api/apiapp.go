@@ -59,7 +59,7 @@ var CmdApiapp = &commands.Command{
 	          └── account
 	                └── user.go
 	                └── user_repository.go
-	                └── encode_user_service.go
+	                └── encode_user.go
 	                └── auth_user_service.go
 `,
 	PreRun: func(cmd *commands.Command, args []string) { version.ShowShortVersionBanner() },
@@ -416,8 +416,8 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "user_repository.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "business", "account", "user_repository.go"),
 		strings.Replace(apiBusinessRepository, "{{.Appname}}", appName, -1))
-	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "encode_user_service.go"), "\x1b[0m")
-	utils.WriteToFile(path.Join(appPath, "business", "account", "encode_user_service.go"),
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "encode_user.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "business", "account", "encode_user.go"),
 		strings.Replace(apiBusinessEncode, "{{.Appname}}", appName, -1))
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business", "account", "auth_user_service.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "business", "account", "auth_user_service.go"),

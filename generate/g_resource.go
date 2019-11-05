@@ -25,7 +25,7 @@ import (
 	"github.com/cisordeng/bee/utils"
 )
 
-var rest = `package {{.package_name}}
+var restOne= `package {{.package_name}}
 
 import (
 	"github.com/cisordeng/beego/xenon"
@@ -60,6 +60,44 @@ func (this *{{.ResourceName}}) Get() {
 	data := b{{.PackageName}}.Encode{{.ResourceName}}({{.resourceName}})
 	this.ReturnJSON(data)
 }
+`
+
+var restComplex = `package {{.package_name}}
+
+import (
+	"github.com/cisordeng/beego/xenon"
+
+	b{{.PackageName}} "{{.app_name}}/business/{{.package_name}}"
+)
+
+type {{.ResourceName}}s struct {
+	xenon.RestResource
+}
+
+func init () {
+	xenon.RegisterResource(new({{.ResourceName}}s))
+}
+
+func (this *{{.ResourceName}}s) Resource() string {
+	return "{{.package_name}}.{{.resource_name}}s"
+}
+
+func (this *{{.ResourceName}}s) Params() map[string][]string {
+	return map[string][]string{
+		"GET":  []string{},
+	}
+}
+
+func (this *{{.ResourceName}}s) Get() {
+	page := this.GetPage()
+	{{.resourceName}}s, pageInfo := b{{.PackageName}}.GetPaged{{.ResourceName}}s(page, xenon.Map{}, "-created_at")
+	data := b{{.PackageName}}.EncodeMany{{.ResourceName}}({{.resourceName}}s)
+	this.ReturnJSON(xenon.Map{
+		"{{.resource_name}}s": data,
+		"page_info": pageInfo.ToMap(),
+	})
+}
+
 `
 
 var businessEntity = `package {{.package_name}}
@@ -144,6 +182,28 @@ func Get{{.ResourceName}}s(filters xenon.Map, orderExprs ...string ) []*{{.Resou
 		{{.resourceName}}s = append({{.resourceName}}s, Init{{.ResourceName}}FromModel(model))
 	}
 	return {{.resourceName}}s
+}
+
+func GetPaged{{.ResourceName}}(page *xenon.Paginator, filters xenon.Map, orderExprs ...string ) ([]*{{.ResourceName}}, xenon.PageInfo) {
+	o := orm.NewOrm()
+	qs := o.QueryTable(&m{{.PackageName}}.{{.ResourceName}}{})
+
+	var models []*m{{.PackageName}}.{{.ResourceName}}
+	if len(filters) > 0 {
+		qs = qs.Filter(filters)
+	}
+	if len(orderExprs) > 0 {
+		qs = qs.OrderBy(orderExprs...)
+	}
+
+	pageInfo, err := xenon.Paginate(qs, page, &models)
+	xenon.PanicNotNilError(err)
+
+	{{.resourceName}} := make([]*{{.ResourceName}}, 0)
+	for _, model := range models {
+		{{.resourceName}} = append({{.resourceName}}, Init{{.ResourceName}}FromModel(model))
+	}
+	return {{.resourceName}}, pageInfo
 }
 
 func Get{{.ResourceName}}ById(id int) *{{.ResourceName}} {
@@ -238,7 +298,11 @@ func GenerateResource(cname, currpath string) {
 	os.MkdirAll(restPath, 0755)
 	fmt.Fprintf(w, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(restPath, fmt.Sprintf("%s.go", strings.ToLower(resourceName))), "\x1b[0m")
 	utils.WriteToFile(path.Join(restPath, fmt.Sprintf("%s.go", strings.ToLower(resourceName))),
-		replaceTpl(rest, appName, packageName, strings.ToLower(resourceName)))
+		replaceTpl(restOne, appName, packageName, strings.ToLower(resourceName)))
+
+	fmt.Fprintf(w, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(restPath, fmt.Sprintf("%ss.go", strings.ToLower(resourceName))), "\x1b[0m")
+	utils.WriteToFile(path.Join(restPath, fmt.Sprintf("%ss.go", strings.ToLower(resourceName))),
+		replaceTpl(restComplex, appName, packageName, strings.ToLower(resourceName)))
 
 	// business
 	businessPath := path.Join(currpath, "business", packageName)

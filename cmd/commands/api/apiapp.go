@@ -43,6 +43,7 @@ var CmdApiapp = &commands.Command{
   The command 'api' creates a folder named [appname] with the following structure:
 
 	    ├── main.go
+		├── .gitignore
 	    ├── {{"conf"|foldername}}
 	    │     └── app.conf
 	    ├── {{"rest"|foldername}}
@@ -65,6 +66,10 @@ var CmdApiapp = &commands.Command{
 	PreRun: func(cmd *commands.Command, args []string) { version.ShowShortVersionBanner() },
 	Run:    createAPI,
 }
+var gitIgnore = `.idea/
+*.tmp
+{{.Appname}}
+`
 var apiConf = `appname = {{.Appname}}
 httpport = 8080
 runmode = dev
@@ -438,6 +443,10 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "main.go"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "main.go"),
 		strings.Replace(apiMain, "{{.Appname}}", appName, -1))
+
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, ".gitignore"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, ".gitignore"),
+		strings.Replace(gitIgnore, "{{.Appname}}", appName, -1))
 
 	beeLogger.Log.Success("New API successfully created!")
 	return 0

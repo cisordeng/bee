@@ -44,6 +44,7 @@ var CmdApiapp = &commands.Command{
 
 	    ├── main.go
 		├── .gitignore
+		├── Dockerfile
 	    ├── {{"conf"|foldername}}
 	    │     └── app.conf
 	    ├── {{"rest"|foldername}}
@@ -70,6 +71,15 @@ var gitIgnore = `.idea/
 *.tmp
 {{.Appname}}
 `
+
+var dockerFile = `FROM golang:1.10.4
+
+ENV APP {{.Appname}}
+ADD ./ /go/src/$APP
+WORKDIR /go/src/$APP
+ENTRYPOINT ["go", "run", "main.go"]
+`
+
 var apiConf = `appname = {{.Appname}}
 httpport = 8080
 runmode = dev
@@ -448,6 +458,10 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, ".gitignore"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, ".gitignore"),
 		strings.Replace(gitIgnore, "{{.Appname}}", appName, -1))
+
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "Dockerfile"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "Dockerfile"),
+		strings.Replace(dockerFile, "{{.Appname}}", appName, -1))
 
 	beeLogger.Log.Success("New API successfully created!")
 	return 0

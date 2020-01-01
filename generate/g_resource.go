@@ -119,7 +119,7 @@ type {{.ResourceName}} struct {
 func init() {
 }
 
-func Init{{.ResourceName}}FromModel(model *m{{.ResourceName}}.{{.ResourceName}}) *{{.ResourceName}} {
+func Init{{.ResourceName}}FromModel(model *m{{.PackageName}}.{{.ResourceName}}) *{{.ResourceName}} {
 	instance := new({{.ResourceName}})
 	instance.Id = model.Id
 	
@@ -129,7 +129,7 @@ func Init{{.ResourceName}}FromModel(model *m{{.ResourceName}}.{{.ResourceName}})
 }
 
 func New{{.ResourceName}}() ({{.resourceName}} *{{.ResourceName}}) {
-	model := m{{.ResourceName}}.{{.ResourceName}}{
+	model := m{{.PackageName}}.{{.ResourceName}}{
 		
 	}
 	_, err := orm.NewOrm().Insert(&model)

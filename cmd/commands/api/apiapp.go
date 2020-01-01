@@ -81,7 +81,7 @@ ENTRYPOINT ["go", "run", "main.go"]
 `
 
 var apiConf = `appname = {{.Appname}}
-httpport = 8080
+httpport = {{.Appport}}
 runmode = dev
 autorender = false
 copyrequestbody = true
@@ -385,6 +385,10 @@ func createAPI(cmd *commands.Command, args []string) int {
 
 	appPath, _, err := utils.CheckEnv(args[0])
 	appName := path.Base(args[0])
+	appPort := "8080"
+	if len(args) > 1 {
+		appPort = args[1]
+	}
 	if err != nil {
 		beeLogger.Log.Fatalf("%s", err)
 	}
@@ -409,7 +413,7 @@ func createAPI(cmd *commands.Command, args []string) int {
 	// config
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf", "app.conf"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "conf", "app.conf"),
-		strings.Replace(apiConf, "{{.Appname}}", appName, -1))
+		strings.Replace(strings.Replace(apiConf, "{{.Appname}}", appName, -1), "{{.Appport}}", appPort, -1))
 
 	// rest
 	os.Mkdir(path.Join(appPath, "rest", "account"), 0755)

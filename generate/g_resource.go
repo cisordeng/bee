@@ -199,11 +199,11 @@ func GetPaged{{.ResourceName}}s(page *xenon.Paginator, filters xenon.Map, orderE
 	pageInfo, err := xenon.Paginate(qs, page, &models)
 	xenon.PanicNotNilError(err)
 
-	{{.resourceName}} := make([]*{{.ResourceName}}, 0)
+	{{.resourceName}}s := make([]*{{.ResourceName}}, 0)
 	for _, model := range models {
-		{{.resourceName}} = append({{.resourceName}}, Init{{.ResourceName}}FromModel(model))
+		{{.resourceName}}s = append({{.resourceName}}s, Init{{.ResourceName}}FromModel(model))
 	}
-	return {{.resourceName}}, pageInfo
+	return {{.resourceName}}s, pageInfo
 }
 
 func Get{{.ResourceName}}ById(id int) *{{.ResourceName}} {

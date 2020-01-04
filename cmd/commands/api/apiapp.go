@@ -44,6 +44,7 @@ var CmdApiapp = &commands.Command{
 
 	    ├── main.go
 		├── .gitignore
+		├── docker.sh
 		├── Dockerfile
 	    ├── {{"conf"|foldername}}
 	    │     └── app.conf
@@ -78,6 +79,47 @@ ENV APP {{.Appname}}
 ADD ./ /go/src/$APP
 WORKDIR /go/src/$APP
 ENTRYPOINT ["go", "run", "main.go"]
+`
+
+var dockerSh = `#!/bin/bash
+
+APP=${PWD##*/}
+
+logs() {
+  CONTAINERIDS=$(sudo docker ps -aq --filter ancestor="$APP")
+  sudo docker logs -f "${CONTAINERIDS}"
+}
+
+deploy() {
+  CONTAINERIDS=$(sudo docker ps -aq --filter ancestor="$APP")
+  for CONTAINERID in ${CONTAINERIDS}
+  do
+    sudo docker stop "${CONTAINERID}"
+    sudo docker rm "${CONTAINERID}"
+  done
+
+  sudo docker build -t "$APP" .
+  NEWCONTAINERID=$(sudo docker run -d --net='host' --env BEEGO_RUNMODE=prod "$APP")
+  sudo docker logs -f "${NEWCONTAINERID}"
+}
+
+update() {
+  git pull
+  deploy
+}
+
+if [ "$1" == "update" ]
+then
+  update
+elif [ "$1" == "deploy" ]
+then
+  deploy
+elif [ "$1" == "logs" ]
+then
+  logs
+else
+  update
+fi
 `
 
 var apiConf = `appname = {{.Appname}}
@@ -467,6 +509,15 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "Dockerfile"), "\x1b[0m")
 	utils.WriteToFile(path.Join(appPath, "Dockerfile"),
 		strings.Replace(dockerFile, "{{.Appname}}", appName, -1))
+
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "docker.sh"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "docker.sh"), dockerSh)
+
+	err = os.Chmod(path.Join(appPath, "docker.sh"), 0775)
+	if err != nil {
+		beeLogger.Log.Fatal("Failed to add execute permission to [docker.sh]")
+	}
+
 
 	beeLogger.Log.Success("New API successfully created!")
 	return 0

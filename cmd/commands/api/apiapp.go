@@ -90,7 +90,7 @@ logs() {
   sudo docker logs -f "${CONTAINERIDS}"
 }
 
-deploy() {
+start() {
   CONTAINERIDS=$(sudo docker ps -aq --filter ancestor="$APP")
   for CONTAINERID in ${CONTAINERIDS}
   do
@@ -105,18 +105,26 @@ deploy() {
 
 update() {
   git pull
-  deploy
+  start
+}
+
+stop() {
+  CONTAINERIDS=$(sudo docker ps -aq --filter ancestor="$APP")
+  sudo docker stop "${CONTAINERIDS}"
 }
 
 if [ "$1" == "update" ]
 then
   update
-elif [ "$1" == "deploy" ]
+elif [ "$1" == "start" ]
 then
-  deploy
+  start
 elif [ "$1" == "logs" ]
 then
   logs
+  elif [ "$1" == "stop" ]
+then
+  stop
 else
   update
 fi

@@ -109,9 +109,9 @@ func (this *{{.ResourceName}}s) Get() {
 var businessEntity = `package {{.package_name}}
 
 import (
+	"context"
 	"time"
 
-	"github.com/cisordeng/beego/orm"
 	"github.com/cisordeng/beego/xenon"
 
 	m{{.PackageName}} "{{.app_name}}/model/{{.package_name}}"
@@ -146,12 +146,26 @@ func New{{.ResourceName}}(ctx context.Context) *{{.ResourceName}} {
 	xenon.PanicNotNilError(err)
 	return Init{{.ResourceName}}FromModel(ctx, &model)
 }
+
+func New{{.ResourceName}}s(ctx context.Context, models []*m{{.PackageName}}.{{.ResourceName}}) []*{{.ResourceName}} {
+	o := xenon.GetOrmFromContext(ctx)
+
+	_, err := o.InsertMulti(len(models), models)
+	xenon.PanicNotNilError(err, "{{.resource_name}}s:create failed", "创建失败")
+
+	{{.resourceName}}s := make([]*{{.ResourceName}}, 0)
+	for _, model := range models {
+		{{.resourceName}}s = append({{.resourceName}}s, Init{{.ResourceName}}FromModel(ctx, model))
+	}
+	return {{.resourceName}}s
+}
 `
 
 var businessRepository = `package {{.package_name}}
 
 import (
-	"github.com/cisordeng/beego/orm"
+	"context"
+
 	"github.com/cisordeng/beego/xenon"
 
 	m{{.PackageName}} "{{.app_name}}/model/{{.package_name}}"
@@ -178,7 +192,7 @@ func (this *{{.ResourceName}}Repository) GetOne{{.ResourceName}}(filters xenon.M
 
 	err := qs.One(&model)
 	xenon.PanicNotNilError(err, "raise:{{.resource_name}}:not_exits", "{{.resource_name}}不存在")
-	return Init{{.ResourceName}}FromModel(&model)
+	return Init{{.ResourceName}}FromModel(this.Ctx, &model)
 }
 
 func (this *{{.ResourceName}}Repository) Get{{.ResourceName}}s(filters xenon.Map, orderExprs ...string ) []*{{.ResourceName}} {
@@ -199,7 +213,7 @@ func (this *{{.ResourceName}}Repository) Get{{.ResourceName}}s(filters xenon.Map
 
 	{{.resourceName}}s := make([]*{{.ResourceName}}, 0)
 	for _, model := range models {
-		{{.resourceName}}s = append({{.resourceName}}s, Init{{.ResourceName}}FromModel(model))
+		{{.resourceName}}s = append({{.resourceName}}s, Init{{.ResourceName}}FromModel(this.Ctx, model))
 	}
 	return {{.resourceName}}s
 }
@@ -221,13 +235,13 @@ func (this *{{.ResourceName}}Repository) GetPaged{{.ResourceName}}s(page *xenon.
 
 	{{.resourceName}}s := make([]*{{.ResourceName}}, 0)
 	for _, model := range models {
-		{{.resourceName}}s = append({{.resourceName}}s, Init{{.ResourceName}}FromModel(model))
+		{{.resourceName}}s = append({{.resourceName}}s, Init{{.ResourceName}}FromModel(this.Ctx, model))
 	}
 	return {{.resourceName}}s, pageInfo
 }
 
 func (this *{{.ResourceName}}Repository) Get{{.ResourceName}}ById(id int) *{{.ResourceName}} {
-	return GetOne{{.ResourceName}}(xenon.Map{
+	return this.GetOne{{.ResourceName}}(xenon.Map{
 		"id": id,
 	})
 }

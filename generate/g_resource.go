@@ -56,7 +56,10 @@ func (this *{{.ResourceName}}) Params() map[string][]string {
 func (this *{{.ResourceName}}) Get() {
 	id, _ := this.GetInt("id", 0)
 
-	{{.resourceName}} := b{{.PackageName}}.Get{{.ResourceName}}ById(id)
+	bCtx := this.GetBusinessContext()
+
+	repository := b{{.PackageName}}.New{{.ResourceName}}Repository(bCtx)
+	{{.resourceName}} := repository.Get{{.ResourceName}}ById(id)
 	data := b{{.PackageName}}.Encode{{.ResourceName}}({{.resourceName}})
 	this.ReturnJSON(data)
 }
@@ -89,8 +92,11 @@ func (this *{{.ResourceName}}s) Params() map[string][]string {
 }
 
 func (this *{{.ResourceName}}s) Get() {
+	bCtx := this.GetBusinessContext()
 	page := this.GetPage()
-	{{.resourceName}}s, pageInfo := b{{.PackageName}}.GetPaged{{.ResourceName}}s(page, xenon.Map{}, "-created_at")
+
+	repository := b{{.PackageName}}.New{{.ResourceName}}Repository(bCtx)
+	{{.resourceName}}s, pageInfo := repository.GetPaged{{.ResourceName}}s(page, xenon.Map{}, "-created_at")
 	data := b{{.PackageName}}.EncodeMany{{.ResourceName}}({{.resourceName}}s)
 	this.ReturnJSON(xenon.Map{
 		"{{.resource_name}}s": data,
@@ -112,6 +118,8 @@ import (
 )
 
 type {{.ResourceName}} struct {
+	xenon.Entity
+	
 	Id int
 	CreatedAt time.Time
 }
@@ -119,8 +127,9 @@ type {{.ResourceName}} struct {
 func init() {
 }
 
-func Init{{.ResourceName}}FromModel(model *m{{.PackageName}}.{{.ResourceName}}) *{{.ResourceName}} {
+func Init{{.ResourceName}}FromModel(ctx context.Context, model *m{{.PackageName}}.{{.ResourceName}}) *{{.ResourceName}} {
 	instance := new({{.ResourceName}})
+	instance.Ctx = ctx
 	instance.Id = model.Id
 	
 	instance.CreatedAt = model.CreatedAt
@@ -128,13 +137,14 @@ func Init{{.ResourceName}}FromModel(model *m{{.PackageName}}.{{.ResourceName}}) 
 	return instance
 }
 
-func New{{.ResourceName}}() ({{.resourceName}} *{{.ResourceName}}) {
+func New{{.ResourceName}}(ctx context.Context) *{{.ResourceName}} {
+	o := xenon.GetOrmFromContext(ctx)
 	model := m{{.PackageName}}.{{.ResourceName}}{
 		
 	}
-	_, err := orm.NewOrm().Insert(&model)
+	_, err := o.Insert(&model)
 	xenon.PanicNotNilError(err)
-	return Init{{.ResourceName}}FromModel(&model)
+	return Init{{.ResourceName}}FromModel(ctx, &model)
 }
 `
 
@@ -147,8 +157,18 @@ import (
 	m{{.PackageName}} "{{.app_name}}/model/{{.package_name}}"
 )
 
-func GetOne{{.ResourceName}}(filters xenon.Map) *{{.ResourceName}} {
-	o := orm.NewOrm()
+type {{.ResourceName}}Repository struct {
+	xenon.Repository
+}
+
+func New{{.ResourceName}}Repository(ctx context.Context) *{{.ResourceName}}Repository {
+	repository := new({{.ResourceName}}Repository)
+	repository.Ctx = ctx
+	return repository
+}
+
+func (this *{{.ResourceName}}Repository) GetOne{{.ResourceName}}(filters xenon.Map) *{{.ResourceName}} {
+	o := xenon.GetOrmFromContext(this.Ctx)
 	qs := o.QueryTable(&m{{.PackageName}}.{{.ResourceName}}{})
 
 	var model m{{.PackageName}}.{{.ResourceName}}
@@ -161,8 +181,8 @@ func GetOne{{.ResourceName}}(filters xenon.Map) *{{.ResourceName}} {
 	return Init{{.ResourceName}}FromModel(&model)
 }
 
-func Get{{.ResourceName}}s(filters xenon.Map, orderExprs ...string ) []*{{.ResourceName}} {
-	o := orm.NewOrm()
+func (this *{{.ResourceName}}Repository) Get{{.ResourceName}}s(filters xenon.Map, orderExprs ...string ) []*{{.ResourceName}} {
+	o := xenon.GetOrmFromContext(this.Ctx)
 	qs := o.QueryTable(&m{{.PackageName}}.{{.ResourceName}}{})
 
 	var models []*m{{.PackageName}}.{{.ResourceName}}
@@ -184,8 +204,8 @@ func Get{{.ResourceName}}s(filters xenon.Map, orderExprs ...string ) []*{{.Resou
 	return {{.resourceName}}s
 }
 
-func GetPaged{{.ResourceName}}s(page *xenon.Paginator, filters xenon.Map, orderExprs ...string ) ([]*{{.ResourceName}}, xenon.PageInfo) {
-	o := orm.NewOrm()
+func (this *{{.ResourceName}}Repository) GetPaged{{.ResourceName}}s(page *xenon.Paginator, filters xenon.Map, orderExprs ...string ) ([]*{{.ResourceName}}, xenon.PageInfo) {
+	o := xenon.GetOrmFromContext(this.Ctx)
 	qs := o.QueryTable(&m{{.PackageName}}.{{.ResourceName}}{})
 
 	var models []*m{{.PackageName}}.{{.ResourceName}}
@@ -206,7 +226,7 @@ func GetPaged{{.ResourceName}}s(page *xenon.Paginator, filters xenon.Map, orderE
 	return {{.resourceName}}s, pageInfo
 }
 
-func Get{{.ResourceName}}ById(id int) *{{.ResourceName}} {
+func (this *{{.ResourceName}}Repository) Get{{.ResourceName}}ById(id int) *{{.ResourceName}} {
 	return GetOne{{.ResourceName}}(xenon.Map{
 		"id": id,
 	})

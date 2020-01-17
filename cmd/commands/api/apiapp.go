@@ -48,6 +48,8 @@ var CmdApiapp = &commands.Command{
 		├── Dockerfile
 	    ├── {{"conf"|foldername}}
 	    │     └── app.conf
+	    ├── {{"cron"|foldername}}
+	    │     └── demo_task.go
 	    ├── {{"rest"|foldername}}
 	    │     └── init.go
 	    │     └── account
@@ -113,6 +115,11 @@ stop() {
   sudo docker stop "${CONTAINERIDS}"
 }
 
+exec() {
+  CONTAINERIDS=$(sudo docker ps -aq --filter ancestor="$APP")
+  sudo docker exec -it "${CONTAINERIDS}" bash
+}
+
 if [ "$1" == "update" ]
 then
   update
@@ -125,10 +132,28 @@ then
   elif [ "$1" == "stop" ]
 then
   stop
+  elif [ "$1" == "exec" ]
+then
+  exec
 else
   update
 fi
 `
+
+var demoTask = `package cron
+
+import (
+	"context"
+	"fmt"
+)
+
+func DemoTask(ctx context.Context) {
+	fmt.Println("demo task is running!")
+}
+
+func init() {
+	//xenon.RegisterCronTask("demo_task", "*/5 * * * *", DemoTask)
+}`
 
 var apiConf = `appname = {{.Appname}}
 httpport = {{.Appport}}
@@ -158,6 +183,7 @@ var apiMain = `package main
 import (
 	"github.com/cisordeng/beego/xenon"
 
+	_ "{{.Appname}}/cron"
 	_ "{{.Appname}}/model"
 	_ "{{.Appname}}/rest"
 )
@@ -450,6 +476,8 @@ func createAPI(cmd *commands.Command, args []string) int {
 
 	os.MkdirAll(appPath, 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", appPath, "\x1b[0m")
+	os.Mkdir(path.Join(appPath, "cron"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "cron"), "\x1b[0m")
 	os.Mkdir(path.Join(appPath, "conf"), 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf"), "\x1b[0m")
 	os.Mkdir(path.Join(appPath, "rest"), 0755)
@@ -459,6 +487,10 @@ func createAPI(cmd *commands.Command, args []string) int {
 	os.Mkdir(path.Join(appPath, "business"), 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business"), "\x1b[0m")
 
+	// cron
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "cron", "demo_task.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "cron", "demo_task.go"),
+		strings.Replace(demoTask, "{{.Appname}}", appName, -1))
 
 	// config
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "conf", "app.conf"), "\x1b[0m")

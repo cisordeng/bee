@@ -46,6 +46,8 @@ var CmdApiapp = &commands.Command{
 		├── .gitignore
 		├── docker.sh
 		├── Dockerfile
+	    ├── {{"cmd"|foldername}}
+	    │     └── demo_cmd.go
 	    ├── {{"conf"|foldername}}
 	    │     └── app.conf
 	    ├── {{"cron"|foldername}}
@@ -140,6 +142,23 @@ else
 fi
 `
 
+var demoCmd = `package cmd
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/cisordeng/beego/xenon"
+)
+
+func DemoCmd(ctx context.Context) {
+	fmt.Println("demo cmd is running!")
+}
+
+func init() {
+	xenon.RegisterCmd("demo_cmd", DemoCmd)
+}`
+
 var demoTask = `package cron
 
 import (
@@ -181,15 +200,18 @@ aesCommonKey = 7d736a2822f8c005a8f034b477b23f27
 var apiMain = `package main
 
 import (
+	"os"
+
 	"github.com/cisordeng/beego/xenon"
 
+	_ "{{.Appname}}/cmd"
 	_ "{{.Appname}}/cron"
 	_ "{{.Appname}}/model"
 	_ "{{.Appname}}/rest"
 )
 
 func main() {
-	xenon.Run()
+	xenon.Run(os.Args)
 }
 `
 
@@ -476,6 +498,8 @@ func createAPI(cmd *commands.Command, args []string) int {
 
 	os.MkdirAll(appPath, 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", appPath, "\x1b[0m")
+	os.Mkdir(path.Join(appPath, "cmd"), 0755)
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", appPath, "\x1b[0m")
 	os.Mkdir(path.Join(appPath, "cron"), 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "cron"), "\x1b[0m")
 	os.Mkdir(path.Join(appPath, "conf"), 0755)
@@ -486,6 +510,11 @@ func createAPI(cmd *commands.Command, args []string) int {
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "model"), "\x1b[0m")
 	os.Mkdir(path.Join(appPath, "business"), 0755)
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "business"), "\x1b[0m")
+
+	// cmd
+	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "cmd", "demo_cmd.go"), "\x1b[0m")
+	utils.WriteToFile(path.Join(appPath, "cmd", "demo_cmd.go"),
+		strings.Replace(demoCmd, "{{.Appname}}", appName, -1))
 
 	// cron
 	fmt.Fprintf(output, "\t%s%screate%s\t %s%s\n", "\x1b[32m", "\x1b[1m", "\x1b[21m", path.Join(appPath, "cron", "demo_task.go"), "\x1b[0m")

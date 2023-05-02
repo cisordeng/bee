@@ -54,9 +54,9 @@ func (this *{{.ResourceName}}) Params() map[string][]string {
 }
 
 func (this *{{.ResourceName}}) Get() {
-	id, _ := this.GetInt("id", 0)
-
 	bCtx := this.GetBusinessContext()
+
+	id, _ := this.GetInt("id", 0)
 
 	repository := b{{.PackageName}}.New{{.ResourceName}}Repository(bCtx)
 	{{.resourceName}} := repository.Get{{.ResourceName}}ById(id)
@@ -93,6 +93,7 @@ func (this *{{.ResourceName}}s) Params() map[string][]string {
 
 func (this *{{.ResourceName}}s) Get() {
 	bCtx := this.GetBusinessContext()
+
 	page := this.GetPage()
 
 	repository := b{{.PackageName}}.New{{.ResourceName}}Repository(bCtx)

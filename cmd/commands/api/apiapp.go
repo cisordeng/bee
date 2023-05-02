@@ -246,11 +246,13 @@ func (this *User) Params() map[string][]string {
 }
 
 func (this *User) Put() {
+	bCtx := this.GetBusinessContext()
+
 	name := this.GetString("name", "")
 	password := this.GetString("password", "")
 	avatar := this.GetString("avatar", "")
 
-	user := bUser.NewUser(name, password, avatar)
+	user := bUser.NewUser(bCtx, name, password, avatar)
 	data := bUser.EncodeUser(user)
 	this.ReturnJSON(data)
 }
@@ -286,13 +288,18 @@ func (this *LoginUser) Params() map[string][]string {
 }
 
 func (this *LoginUser) Put() {
+	bCtx := this.GetBusinessContext()
+
 	name := this.GetString("name", "")
 	password := this.GetString("password", "")
-	sid := bUser.AuthUser(name, password)
-	if sid != "" {
-		user := bUser.GetUserByName(name)
+
+	repository := bUser.NewUserRepository(bCtx)
+	userService := bUser.NewUserService(bCtx)
+	token := userService.AuthUser(name, password)
+	if token != "" {
+		user := repository.GetUserByName(name)
 		data := bUser.EncodeUser(user)
-		data["sid"] = sid
+		data["token"] = token
 		this.ReturnJSON(data)
 	} else {
 		xenon.RaiseException("rest:name or password is wrong", "用户名或密码错误")
@@ -358,6 +365,8 @@ import (
 )
 
 type User struct {
+	xenon.Entity
+
 	Id int
 	Name string
 	Password string
@@ -368,8 +377,9 @@ type User struct {
 func init() {
 }
 
-func InitUserFromModel(model *mUser.User) *User {
+func InitUserFromModel(ctx context.Context, model *mUser.User) *User {
 	instance := new(User)
+	instance.Ctx = ctx
 	instance.Id = model.Id
 	instance.Name = model.Name
 	instance.Password = model.Password
@@ -379,13 +389,14 @@ func InitUserFromModel(model *mUser.User) *User {
 	return instance
 }
 
-func NewUser(name string, password string, avatar string) (user *User) {
+func NewUser(ctx context.Context, name string, password string, avatar string) (user *User) {
+	o := xenon.GetOrmFromContext(ctx)
 	model := mUser.User{
 		Name: name,
 		Password: xenon.EncodeMD5(password),
 		Avatar: avatar,
 	}
-	_, err := orm.NewOrm().Insert(&model)
+	_, err := o.Insert(&model)
 	xenon.PanicNotNilError(err)
 	return InitUserFromModel(&model)
 }
@@ -400,13 +411,27 @@ import (
 	mUser "{{.Appname}}/model/account"
 )
 
-func GetUserByName(name string) (user *User)  {
-	model := mUser.User{}
-	err := orm.NewOrm().QueryTable(&mUser.User{}).Filter(xenon.Map{
+type UserRepository struct {
+	xenon.Repository
+}
+
+func NewUserRepository(ctx context.Context) *UserRepository {
+	repository := new(UserRepository)
+	repository.Ctx = ctx
+	return repository
+}
+
+func (this *UserRepository) GetUserByName(name string) (user *User)  {
+	o := xenon.GetOrmFromContext(this.Ctx)
+	qs := o.QueryTable(&mUser.User{})
+	qs = qs.Filter(xenon.Map{
 		"name": name,
-	}).One(&model)
+	})
+	
+	var model mUser.User
+	err := qs.One(&model)
 	xenon.PanicNotNilError(err, "raise:account:not_exits", "用户不存在")
-	user = InitUserFromModel(&model)
+	user = InitUserFromModel(this.Ctx, &model)
 	return user
 }
 `
@@ -437,8 +462,19 @@ import (
 	"github.com/cisordeng/beego/xenon"
 )
 
-func AuthUser(name string, password string) string {
-	user := GetUserByName(name)
+type UserService struct {
+	xenon.Service
+}
+
+func NewUserService(ctx context.Context) *UserService {
+	service := new(UserService)
+	service.Ctx = ctx
+	return service
+}
+
+func (this *UserService) AuthUser(name string, password string) string {
+	repository := NewUserRepository(this.Ctx)
+	user := repository.GetUserByName(name)
 	userMap := EncodeUser(user)
 	if user.Password == xenon.EncodeMD5(password) {
 		decodedByteToken, err := json.Marshal(userMap)
@@ -446,9 +482,9 @@ func AuthUser(name string, password string) string {
 		decodedToken := string(decodedByteToken)
 
 		commonKey := beego.AppConfig.String("api::aesCommonKey")
-		sid, err := xenon.EncodeAesWithCommonKey(decodedToken, commonKey)
+		token, err := xenon.EncodeAesWithCommonKey(decodedToken, commonKey)
 		xenon.PanicNotNilError(err)
-		return sid
+		return token
 	}
 	return ""
 }

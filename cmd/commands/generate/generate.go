@@ -60,6 +60,10 @@ var CmdGenerate = &commands.Command{
   ▶ {{"To generate appcode based on an existing database:"|bold}}
 
      $ bee generate appcode [-tables=""] [-driver=mysql] [-conn="root:@tcp(127.0.0.1:3306)/test"] [-level=3]
+
+  ▶ {{"To generate resource based on an existing package:"|bold}}
+
+     $ bee generate resource [package.resource]
 `,
 	PreRun: func(cmd *commands.Command, args []string) { version.ShowShortVersionBanner() },
 	Run:    GenerateCode,

@@ -294,8 +294,8 @@ func (this *LoginUser) Put() {
 	password := this.GetString("password", "")
 
 	repository := bUser.NewUserRepository(bCtx)
-	userService := bUser.NewUserService(bCtx)
-	token := userService.AuthUser(name, password)
+	service := bUser.NewUserService(bCtx)
+	token := service.AuthUser(name, password)
 	if token != "" {
 		user := repository.GetUserByName(name)
 		data := bUser.EncodeUser(user)

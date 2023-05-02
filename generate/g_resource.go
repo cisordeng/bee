@@ -290,7 +290,7 @@ type {{.ResourceName}} struct {
 	CreatedAt time.Time ` + "`orm:\"auto_now_add;type(datetime)\"`" + `
 }
 
-func (o *{{.ResourceName}}) TableName() string {
+func (this *{{.ResourceName}}) TableName() string {
 	return "{{.package_name}}_{{.resource_name}}"
 }
 

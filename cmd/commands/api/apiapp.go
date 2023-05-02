@@ -452,6 +452,14 @@ func EncodeUser(user *User) xenon.Map {
 	}
 	return mapUser
 }
+
+func EncodeManyUser(users []*User) []xenon.Map {
+	mapUsers := make([]xenon.Map, 0)
+	for _, user := range users {
+		mapUsers = append(mapUsers, EncodeUser(user))
+	}
+	return mapUsers
+}
 `
 
 var apiBusinessAuth = `package account

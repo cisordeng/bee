@@ -355,9 +355,9 @@ func init() {
 var apiBusiness = `package account
 
 import (
+	"context"
 	"time"
 
-	"github.com/cisordeng/beego/orm"
 	"github.com/cisordeng/beego/xenon"
 
 	mUser "{{.Appname}}/model/account"
@@ -398,14 +398,15 @@ func NewUser(ctx context.Context, name string, password string, avatar string) (
 	}
 	_, err := o.Insert(&model)
 	xenon.PanicNotNilError(err)
-	return InitUserFromModel(&model)
+	return InitUserFromModel(ctx, &model)
 }
 `
 
 var apiBusinessRepository = `package account
 
 import (
-	"github.com/cisordeng/beego/orm"
+	"context"
+
 	"github.com/cisordeng/beego/xenon"
 
 	mUser "{{.Appname}}/model/account"
@@ -456,6 +457,7 @@ func EncodeUser(user *User) xenon.Map {
 var apiBusinessAuth = `package account
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/cisordeng/beego"

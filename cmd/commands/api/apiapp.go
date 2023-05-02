@@ -74,6 +74,7 @@ var CmdApiapp = &commands.Command{
 }
 var gitIgnore = `.idea/
 *.tmp
+*.lock
 {{.Appname}}
 `
 

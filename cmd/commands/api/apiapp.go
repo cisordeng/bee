@@ -401,12 +401,14 @@ func InitUserFromModel(ctx context.Context, model *mUser.User) *User {
 
 func NewUser(ctx context.Context, name string, password string, avatar string) (user *User) {
 	o := xenon.GetOrmFromContext(ctx)
+	md5String, err := xenon.EncodeMD5(password)
+	xenon.PanicNotNilError(err, "rest:md5 sum error", "计算文件md5值失败")
 	model := mUser.User{
 		Name: name,
-		Password: xenon.EncodeMD5(password),
+		Password: md5String,
 		Avatar: avatar,
 	}
-	_, err := o.Insert(&model)
+	_, err = o.Insert(&model)
 	xenon.PanicNotNilError(err)
 	return InitUserFromModel(ctx, &model)
 }
@@ -496,7 +498,9 @@ func (this *UserService) AuthUser(name string, password string) string {
 	repository := NewUserRepository(this.Ctx)
 	user := repository.GetUserByName(name)
 	userMap := EncodeUser(user)
-	if user.Password == xenon.EncodeMD5(password) {
+	md5String, err := xenon.EncodeMD5(password)
+	xenon.PanicNotNilError(err, "rest:md5 sum error", "计算文件md5值失败")
+	if user.Password == md5String {
 		decodedByteToken, err := json.Marshal(userMap)
 		xenon.PanicNotNilError(err)
 		decodedToken := string(decodedByteToken)

@@ -355,6 +355,9 @@ func init() {
 var apiModelInit = `package model
 
 import (
+	_ "github.com/go-sql-driver/mysql"
+	//_ "github.com/mattn/go-sqlite3"
+
 	_ "{{.Appname}}/model/account"
 )
 
@@ -371,7 +374,6 @@ import (
 	"github.com/cisordeng/beego/xenon"
 
 	mUser "{{.Appname}}/model/account"
-
 )
 
 type User struct {

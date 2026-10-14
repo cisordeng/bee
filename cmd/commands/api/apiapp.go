@@ -196,7 +196,7 @@ DB_CHARSET = utf8
 apiUrl = http://localhost
 enableSign = true
 signSecret = 7d736a2822f8c005a8f034b477b23f27
-signEffectiveSeconds = 15
+signEffectiveSeconds = 60
 aesCommonKey = 7d736a2822f8c005a8f034b477b23f27
 `
 var apiMain = `package main
